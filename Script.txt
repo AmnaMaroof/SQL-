@@ -1,0 +1,233 @@
+Create the Student table
+
+
+CREATE TABLE Student (
+    snum INT PRIMARY KEY,
+    sname VARCHAR(255),
+    major VARCHAR(255),
+    level VARCHAR(255),
+    age INT
+);
+Select *from student;
+
+
+-- Create the Class table
+CREATE TABLE Class (
+    name VARCHAR(255),
+    meets_at timestamp,
+    room VARCHAR(255),
+    fid INT,
+    PRIMARY KEY (name), -- Assuming that class names are unique
+    FOREIGN KEY (fid) REFERENCES Faculty(fid)
+);
+
+
+select *from Class ;
+
+
+-- Create the Enrolled table
+CREATE TABLE Enrolled (
+    snum INT,
+    cname VARCHAR(255),
+    PRIMARY KEY (snum, cname),
+    FOREIGN KEY (snum) REFERENCES Student(snum),
+    FOREIGN KEY (cname) REFERENCES Class(name)
+);
+
+
+select *from enrolled ;
+
+
+-- Create the Faculty table
+CREATE TABLE Faculty (
+    fid INT PRIMARY KEY,
+    fname VARCHAR(255),
+    deptid INT
+);
+select *from faculty ;
+
+
+INSERT INTO Student (snum, sname, major, level, age) VALUES
+    (1, 'Ahmed', 'History', 'SR', 22),
+    (2, 'Shahzeb', 'Computer Science', 'JR', 21),
+    (3, 'Alice', 'Biology', 'JR', 20),
+    (4, 'Warisha', 'History', 'JR', 21),
+    (5, 'David', 'Computer Science', 'SR', 22),
+    (6, 'Mikeal', 'Biology', 'SR', 23),
+    (7, 'Amna', 'Mathematics', 'SR', 22);
+
+   select *from Class ;
+
+-- Insert data into the Class table
+INSERT INTO Class (name, meets_at, room, fid) VALUES
+    ('History101', timestamp('2023-05-08 10:30:00'), 'R128', 1),
+    ('CS202', timestamp('2023-06-09 11:30:00'), 'R128', 2),
+    ('BIO301', timestamp('2023-04-10 12:30:00'), 'S101', 3),
+    ('Math101', timestamp('2023-06-12 14:30:00'), 'R128', 1),
+    ('History201', timestamp('2023-01-08 13:30:00'), 'S102', 1),
+    ('CS303', timestamp('2023-05-03 09:15:00'), 'S103', 2);
+
+ 
+
+-- Insert data into the Enrolled table
+INSERT INTO Enrolled (snum, cname) VALUES
+    (1, 'History101'),
+    (2, 'History201'),
+    (4, 'CS202'),
+    (5, 'BIO301'),
+    (6, 'Math101'),
+    (3, 'CS303');Class
+
+
+
+
+-- Insert data into the Faculty table
+INSERT INTO Faculty (fid, fname, deptid) VALUES
+    (1, 'I. Teach', 101),
+    (2, 'A. Tech', 102),
+    (3, 'B. Tech', 103);
+    
+    
+  -- Find the names of all Juniors (level = JR) who are enrolled in a class taught by I. Teach.  
+    SELECT DISTINCT S.sname
+FROM Student S
+JOIN Enrolled E ON S.snum = E.snum
+JOIN Class C ON E.cname = C.name
+JOIN Faculty F ON C.fid = F.fid
+WHERE S.level = 'JR' AND F.fname = 'I. Teach';
+
+
+select S.sname From Student S, Class c, Enrolled E, Faculty F
+Where S.snum = E.snum
+And E.cname = C.name 
+And C.fid = F.fid
+And F.fname = 'I. Teach'
+And S.level = 'JR';
+
+
+-- Find the age of the oldest student who is either a History major or enrolled in a course taught by I. Teach.
+SELECT MAX(age) AS oldest_age
+FROM Student
+WHERE major = 'History'
+   OR snum IN (SELECT snum FROM Enrolled WHERE cname IN (SELECT name FROM Class WHERE fid IN (SELECT fid FROM Faculty WHERE fname = 'I. Teach')));
+
+
+-- Find the names of all classes that either meet in room R128 or have five or more students enrolled.
+
+
+SELECT name
+FROM Class
+WHERE room = 'R128'
+   OR name IN (
+       SELECT cname
+       FROM Enrolled
+       GROUP BY cname
+       HAVING COUNT(DISTINCT snum) >= 5
+   );
+   
+ -- Find the names of all students who are enrolled in two classes that meet at the same time.
+ 
+ SELECT DISTINCT s.sname
+FROM Student s
+INNER JOIN Enrolled e1 ON s.snum = e1.snum
+INNER JOIN Class c1 ON e1.cname = c1.name
+INNER JOIN Enrolled e2 ON s.snum = e2.snum
+INNER JOIN Class c2 ON e2.cname = c2.name
+WHERE c1.meets_at = c2.meets_at
+  AND c1.name <> c2.name  ;
+  
+  
+-- Find the names of faculty members who teach in every room in which some class is taught.
+
+
+SELECT f.fname
+FROM Faculty f
+WHERE NOT EXISTS (
+    SELECT DISTINCT r.room
+    FROM Class r
+    WHERE NOT EXISTS (
+        SELECT DISTINCT c.name
+        FROM Class c
+        WHERE c.fid = f.fid AND c.room = r.room
+    )
+);
+-- Find the names of faculty members for whom the combined enrollment of the courses that they teach is less than five.
+Select distinct f.fname 
+from faculty F 
+Where 5<(select Count(E.snum)
+From Class C, Enrolled E
+Where C.name = E.cname 
+And C.fid = F.fid );
+
+
+
+
+-- Print the level and the average age of students for that level, for each level.
+Select S.level,
+avg (S.age) 
+From Student S
+Group By S.level ;
+
+
+-- Print the level and the average age of students for that level, for all levels except JR.
+Select S.level, 
+avg (s.age)
+From student S 
+where S.level <> 'JR'
+Group by s.level ;
+
+
+
+
+
+
+-- For each faculty member that has taught classes only in room R128, print the faculty member's name and the total number of classes she or he has taught.
+
+
+SELECT F.fname, COUNT(*) AS courseCount
+FROM faculty F
+INNER JOIN class C ON F.fid = C.fid
+WHERE C.room = 'R128'
+GROUP BY F.fname;
+
+
+-- Find the names of students enrolled in the maximum number of classes.
+
+
+select distinct S.sname from student S
+where s.snum 
+IN (select E.snum 
+From Enrolled E
+Group by E.snum
+Having Count(*)>= 
+All (select Count(*) 
+From Enrolled E2 
+Group by E2.snum ));
+
+
+-- Find the names of students not enrolled in any class.
+
+
+Select distinct S.sname 
+From student S
+where S.snum 
+Not IN(select E.snum 
+from Enrolled E);
+
+
+-- For each age value that appears in Students, find the level value that appears most often. For example, if there are more FR level students aged 18 than SR, JR, or SO students aged 18, you should print the pair (18, FR)
+
+
+select S.age, S.level
+From student S 
+Group by S.age,S.level,
+Having S.level
+IN (select S1.level
+from student S1 
+Where S1.age =S.age 
+Group by S1.level, S1.age
+Having Count(*)>= 
+All(Select count(*) 
+from student S2 
+Where s1.age = S2.age 
+group by S2.level, S2.age)); 
